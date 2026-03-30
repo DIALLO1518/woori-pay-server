@@ -1,0 +1,5 @@
+﻿[phases.build]
+cmds = []
+
+[start]
+cmd = "npx ts-node src/server.ts"
