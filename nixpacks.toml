@@ -1,5 +1,5 @@
 ﻿[phases.build]
-cmds = []
+cmds = ["echo skip"]
 
 [start]
 cmd = "npx ts-node src/server.ts"
