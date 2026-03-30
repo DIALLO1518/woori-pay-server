@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  phone       String   @unique
+  pinHash     String
+  status      String   @default("PENDING")
+  firstName   String?
+  lastName    String?
+  idNumber    String?
+  failedPinAttempts Int @default(0)
+  lastPinAttempt    DateTime?
+  biometricEnabled  Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  wallet      Wallet?
+  sentTx      Transaction[] @relation("Sender")
+  receivedTx  Transaction[] @relation("Receiver")
+  
+  @@index([phone])
+  @@index([status])
+}
+
+model Wallet {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  balance     Int      @default(0)
+  currency    String   @default("GNF")
+  isActive    Boolean  @default(true)
+  dailyLimit  Int      @default(500000)
+  monthlyLimit Int     @default(2000000)
+  updatedAt   DateTime @updatedAt
+  
+  transactions Transaction[]
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  type          String   @default("TRANSFER")
+  status        String   @default("PENDING")
+  walletId      String
+  wallet        Wallet   @relation(fields: [walletId], references: [id])
+  senderId      String?
+  sender        User?    @relation("Sender", fields: [senderId], references: [id])
+  receiverId    String?
+  receiver      User?    @relation("Receiver", fields: [receiverId], references: [id])
+  receiverPhone String?
+  amount        Int
+  fee           Int      @default(0)
+  netAmount     Int
+  reference     String   @unique
+  description   String?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  
+  @@index([walletId, createdAt])
+  @@index([status, createdAt])
+  @@index([reference])
+}
+
+model OTP {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@index([phone, expiresAt])
+}
