@@ -2,4 +2,4 @@
 cmds = ["echo skip"]
 
 [start]
-cmd = "npx ts-node src/server.ts"
+cmd = "node dist/server.js"

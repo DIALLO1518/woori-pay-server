@@ -6,7 +6,7 @@
     "scripts":  {
                     "dev":  "nodemon src/server.ts",
                     "build":  "echo skip",
-                    "start":  "npx ts-node src/server.ts",
+                    "start":  "node dist/server.js",
                     "db:migrate":  "prisma migrate dev",
                     "db:generate":  "prisma generate",
                     "db:studio":  "prisma studio"
@@ -34,6 +34,6 @@
                             "@types/node":  "^20.11.0",
                             "nodemon":  "^3.1.0",
                             "ts-node":  "^10.9.2",
-                            "typescript":  "^5.4.0"
+                            "typescript":  "^5.9.3"
                         }
 }
