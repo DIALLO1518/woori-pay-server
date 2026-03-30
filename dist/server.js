@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
@@ -14,7 +14,7 @@ const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
-// ─── HELPERS ────────────────────────────────────────────────────────────────
+// --- HELPERS ----------------------------------------------------------------
 const formatPhone = (phone) => {
     phone = phone.replace(/\s/g, "").replace(/-/g, "");
     if (phone.startsWith("00"))
@@ -40,21 +40,21 @@ const verifyPin = async (userId, pin) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user)
         return false;
-    return bcrypt_1.default.compare(pin, user.pinHash);
+    return bcryptjs_1.default.compare(pin, user.pinHash);
 };
-// ─── AUTH ────────────────────────────────────────────────────────────────────
+// --- AUTH --------------------------------------------------------------------
 app.post("/api/v1/auth/send-otp", async (req, res) => {
     try {
         const { phone } = req.body;
         if (!phone)
-            return res.status(400).json({ success: false, error: "Numéro requis" });
+            return res.status(400).json({ success: false, error: "Num�ro requis" });
         const formattedPhone = formatPhone(phone);
         const otpCode = generateOTP();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
         await prisma.oTP.deleteMany({ where: { phone: formattedPhone } });
         await prisma.oTP.create({ data: { phone: formattedPhone, code: otpCode, expiresAt } });
-        console.log(`✅ OTP pour ${formattedPhone}: ${otpCode}`);
-        res.json({ success: true, message: "OTP envoyé", code: otpCode, expiresIn: 600 });
+        console.log(`? OTP pour ${formattedPhone}: ${otpCode}`);
+        res.json({ success: true, message: "OTP envoy�", code: otpCode, expiresIn: 600 });
     }
     catch (error) {
         console.error("Send OTP error:", error);
@@ -67,33 +67,33 @@ app.post("/api/v1/auth/verify-otp", async (req, res) => {
         if (!phone || !otp || !pin)
             return res.status(400).json({ success: false, error: "Tous les champs sont requis" });
         if (!/^\d{4}$/.test(pin))
-            return res.status(400).json({ success: false, error: "PIN doit être 4 chiffres" });
+            return res.status(400).json({ success: false, error: "PIN doit �tre 4 chiffres" });
         const formattedPhone = formatPhone(phone);
         const otpRecord = await prisma.oTP.findFirst({
             where: { phone: formattedPhone, code: otp, verified: false, expiresAt: { gt: new Date() } }
         });
         if (!otpRecord)
-            return res.status(400).json({ success: false, error: "Code invalide ou expiré" });
+            return res.status(400).json({ success: false, error: "Code invalide ou expir�" });
         await prisma.oTP.update({ where: { id: otpRecord.id }, data: { verified: true } });
         let user = await prisma.user.findUnique({ where: { phone: formattedPhone }, include: { wallet: true } });
         if (!user) {
-            // Nouveau compte — solde 0
+            // Nouveau compte � solde 0
             user = await prisma.user.create({
                 data: {
                     phone: formattedPhone,
-                    pinHash: await bcrypt_1.default.hash(pin, 10),
+                    pinHash: await bcryptjs_1.default.hash(pin, 10),
                     status: "ACTIVE",
                     wallet: { create: { balance: 0 } }
                 },
                 include: { wallet: true }
             });
-            console.log(`🆕 Nouveau compte créé: ${formattedPhone}`);
+            console.log(`?? Nouveau compte cr��: ${formattedPhone}`);
         }
         else {
-            // Compte existant — mettre à jour le PIN si reconnexion
+            // Compte existant � mettre � jour le PIN si reconnexion
             await prisma.user.update({
                 where: { id: user.id },
-                data: { pinHash: await bcrypt_1.default.hash(pin, 10) }
+                data: { pinHash: await bcryptjs_1.default.hash(pin, 10) }
             });
         }
         const token = generateToken(user.id, user.phone);
@@ -114,26 +114,26 @@ app.post("/api/v1/auth/verify-otp", async (req, res) => {
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── WALLET ──────────────────────────────────────────────────────────────────
+// --- WALLET ------------------------------------------------------------------
 app.get("/api/v1/wallet/balance", authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
         const wallet = await prisma.wallet.findUnique({ where: { userId } });
         if (!wallet)
-            return res.status(404).json({ success: false, error: "Wallet non trouvé" });
+            return res.status(404).json({ success: false, error: "Wallet non trouv�" });
         res.json({ success: true, balance: wallet.balance, currency: wallet.currency });
     }
     catch (error) {
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+// --- TRANSACTIONS -------------------------------------------------------------
 app.get("/api/v1/transactions", authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
         const wallet = await prisma.wallet.findUnique({ where: { userId } });
         if (!wallet)
-            return res.status(404).json({ success: false, error: "Wallet non trouvé" });
+            return res.status(404).json({ success: false, error: "Wallet non trouv�" });
         const transactions = await prisma.transaction.findMany({
             where: { walletId: wallet.id },
             orderBy: { createdAt: "desc" },
@@ -145,7 +145,7 @@ app.get("/api/v1/transactions", authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── CHECK PHONE ──────────────────────────────────────────────────────────────
+// --- CHECK PHONE --------------------------------------------------------------
 app.get("/api/v1/users/check-phone/:phone", authenticateToken, async (req, res) => {
     try {
         const phone = formatPhone(decodeURIComponent(req.params.phone));
@@ -169,7 +169,7 @@ app.get("/api/v1/users/check-phone/:phone", authenticateToken, async (req, res) 
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── DEPOSIT ──────────────────────────────────────────────────────────────────
+// --- DEPOSIT ------------------------------------------------------------------
 app.post("/api/v1/payments/deposit", authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
@@ -183,7 +183,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req, res) => {
             return res.status(401).json({ success: false, error: "PIN incorrect" });
         const wallet = await prisma.wallet.findUnique({ where: { userId } });
         if (!wallet)
-            return res.status(404).json({ success: false, error: "Wallet non trouvé" });
+            return res.status(404).json({ success: false, error: "Wallet non trouv�" });
         const reference = "DEP_" + Date.now() + "_" + userId.substring(0, 6);
         const result = await prisma.$transaction(async (tx) => {
             const updatedWallet = await tx.wallet.update({
@@ -200,7 +200,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req, res) => {
                     fee: 0,
                     netAmount: amount,
                     reference,
-                    description: `Dépôt via ${provider || "Mobile Money"}`,
+                    description: `D�p�t via ${provider || "Mobile Money"}`,
                     completedAt: new Date()
                 }
             });
@@ -216,7 +216,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req, res) => {
                 currency: currency || wallet.currency,
                 date: result.transaction.createdAt,
                 status: "COMPLETED",
-                description: `Dépôt via ${provider || "Mobile Money"}`,
+                description: `D�p�t via ${provider || "Mobile Money"}`,
                 fees: 0
             }
         });
@@ -226,7 +226,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── WITHDRAW ─────────────────────────────────────────────────────────────────
+// --- WITHDRAW -----------------------------------------------------------------
 app.post("/api/v1/payments/withdraw", authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
@@ -240,7 +240,7 @@ app.post("/api/v1/payments/withdraw", authenticateToken, async (req, res) => {
             return res.status(401).json({ success: false, error: "PIN incorrect" });
         const wallet = await prisma.wallet.findUnique({ where: { userId } });
         if (!wallet)
-            return res.status(404).json({ success: false, error: "Wallet non trouvé" });
+            return res.status(404).json({ success: false, error: "Wallet non trouv�" });
         if (wallet.balance < amount)
             return res.status(400).json({ success: false, error: "Solde insuffisant" });
         const reference = "WIT_" + Date.now() + "_" + userId.substring(0, 6);
@@ -287,7 +287,7 @@ app.post("/api/v1/payments/withdraw", authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── TRANSFER ─────────────────────────────────────────────────────────────────
+// --- TRANSFER -----------------------------------------------------------------
 app.post("/api/v1/transfers/send", authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
@@ -298,17 +298,17 @@ app.post("/api/v1/transfers/send", authenticateToken, async (req, res) => {
         if (!pinOk)
             return res.status(401).json({ success: false, error: "PIN incorrect" });
         const formattedRecipient = formatPhone(recipientPhone);
-        // Vérifier que le destinataire a un compte actif
+        // V�rifier que le destinataire a un compte actif
         const recipient = await prisma.user.findUnique({
             where: { phone: formattedRecipient },
             include: { wallet: true }
         });
         if (!recipient || recipient.status === "PENDING" || !recipient.wallet) {
-            return res.status(404).json({ success: false, error: "Ce numéro n'a pas de compte Woori Pay actif" });
+            return res.status(404).json({ success: false, error: "Ce num�ro n'a pas de compte Woori Pay actif" });
         }
         const senderWallet = await prisma.wallet.findUnique({ where: { userId } });
         if (!senderWallet)
-            return res.status(404).json({ success: false, error: "Wallet non trouvé" });
+            return res.status(404).json({ success: false, error: "Wallet non trouv�" });
         if (senderWallet.balance < amount)
             return res.status(400).json({ success: false, error: "Solde insuffisant" });
         const fee = amount >= 100000 ? Math.floor(amount * 0.01) : 0;
@@ -331,7 +331,7 @@ app.post("/api/v1/transfers/send", authenticateToken, async (req, res) => {
                     fee,
                     netAmount: amount,
                     reference,
-                    description: `Envoyé à ${recipientName || formattedRecipient}`,
+                    description: `Envoy� � ${recipientName || formattedRecipient}`,
                     completedAt: new Date()
                 }
             });
@@ -347,7 +347,7 @@ app.post("/api/v1/transfers/send", authenticateToken, async (req, res) => {
                 currency: currency || senderWallet.currency,
                 date: result.createdAt,
                 status: "COMPLETED",
-                description: `Envoyé à ${recipientName || formattedRecipient}`,
+                description: `Envoy� � ${recipientName || formattedRecipient}`,
                 recipientName: recipientName || "Utilisateur Woori",
                 recipientPhone: formattedRecipient,
                 fees: fee
@@ -359,14 +359,14 @@ app.post("/api/v1/transfers/send", authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, error: "Erreur serveur" });
     }
 });
-// ─── HEALTH ──────────────────────────────────────────────────────────────────
+// --- HEALTH ------------------------------------------------------------------
 app.get("/health", (req, res) => {
     res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Woori Pay Server démarré sur le port ${PORT}`);
-    console.log(`📡 Test: http://localhost:${PORT}/health`);
+    console.log(`?? Woori Pay Server d�marr� sur le port ${PORT}`);
+    console.log(`?? Test: http://localhost:${PORT}/health`);
 });
 process.on("SIGINT", async () => {
     await prisma.$disconnect();
