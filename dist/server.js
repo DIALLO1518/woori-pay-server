@@ -372,4 +372,5 @@ process.on("SIGINT", async () => {
     await prisma.$disconnect();
     process.exit(0);
 });
+app.get("/admin", (req, res) => { res.sendFile(require("path").join(process.cwd(), "dist", "admin.html")); });
 //# sourceMappingURL=server.js.map
