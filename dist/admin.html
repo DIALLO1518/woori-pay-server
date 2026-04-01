@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -85,7 +85,7 @@
     </div>
     <div class="form-group">
       <label>Mot de passe</label>
-      <input type="password" id="adminPassword" placeholder="••••••••" />
+      <input type="password" id="adminPassword" placeholder="��������" />
     </div>
     <button class="login-btn" onclick="adminLogin()">Se connecter</button>
     <p class="error-msg" id="loginError"></p>
@@ -98,13 +98,13 @@
       <h1>WOORI PAY</h1>
       <p>Admin Dashboard</p>
     </div>
-    <div class="nav-item active" onclick="showSection('overview')"><span>📊</span> Vue generale</div>
-    <div class="nav-item" onclick="showSection('users')"><span>👥</span> Utilisateurs</div>
-    <div class="nav-item" onclick="showSection('transactions')"><span>💸</span> Transactions</div>
-    <div class="nav-item" onclick="showSection('countries')"><span>🌍</span> Par pays</div>
-    <div class="nav-item" onclick="showSection('receipts')"><span>🧾</span> Recus</div>
-    <div class="nav-item" onclick="showSection('support')"><span>🎧</span> Support tickets</div>
-    <div class="nav-item" onclick="adminLogout()" style="position:absolute;bottom:20px;width:100%;"><span>🚪</span> Deconnexion</div>
+    <div class="nav-item active" onclick="showSection('overview')"><span>??</span> Vue generale</div>
+    <div class="nav-item" onclick="showSection('users')"><span>??</span> Utilisateurs</div>
+    <div class="nav-item" onclick="showSection('transactions')"><span>??</span> Transactions</div>
+    <div class="nav-item" onclick="showSection('countries')"><span>??</span> Par pays</div>
+    <div class="nav-item" onclick="showSection('receipts')"><span>??</span> Recus</div>
+    <div class="nav-item" onclick="showSection('support')"><span>??</span> Support tickets</div>
+    <div class="nav-item" onclick="adminLogout()" style="position:absolute;bottom:20px;width:100%;"><span>??</span> Deconnexion</div>
   </div>
 
   <div class="main">
@@ -112,7 +112,7 @@
     <div id="overview" class="section active">
       <div class="top-bar">
         <h2>Vue generale</h2>
-        <button class="refresh-btn" onclick="loadAll()">🔄 Actualiser</button>
+        <button class="refresh-btn" onclick="loadAll()">?? Actualiser</button>
       </div>
       <div class="stats-grid" id="statsGrid">
         <div class="loading">Chargement...</div>
@@ -133,7 +133,7 @@
     <div id="users" class="section">
       <div class="top-bar">
         <h2>Utilisateurs</h2>
-        <button class="refresh-btn" onclick="loadUsers()">🔄 Actualiser</button>
+        <button class="refresh-btn" onclick="loadUsers()">?? Actualiser</button>
       </div>
       <div class="card">
         <div class="search-bar">
@@ -164,7 +164,7 @@
     <div id="transactions" class="section">
       <div class="top-bar">
         <h2>Toutes les transactions</h2>
-        <button class="refresh-btn" onclick="loadTransactions()">🔄 Actualiser</button>
+        <button class="refresh-btn" onclick="loadTransactions()">?? Actualiser</button>
       </div>
       <div class="card">
         <div class="filters">
@@ -195,7 +195,7 @@
     <div id="countries" class="section">
       <div class="top-bar">
         <h2>Statistiques par pays</h2>
-        <button class="refresh-btn" onclick="loadCountries()">🔄 Actualiser</button>
+        <button class="refresh-btn" onclick="loadCountries()">?? Actualiser</button>
       </div>
       <div id="countriesGrid" class="stats-grid">
         <div class="loading">Chargement...</div>
@@ -206,7 +206,7 @@
     <div id="receipts" class="section">
       <div class="top-bar">
         <h2>Copie des recus</h2>
-        <button class="refresh-btn" onclick="loadReceipts()">🔄 Actualiser</button>
+        <button class="refresh-btn" onclick="loadReceipts()">?? Actualiser</button>
       </div>
       <div class="card">
         <div class="search-bar">
@@ -262,7 +262,7 @@ async function adminLogin() {
   const password = document.getElementById("adminPassword").value;
 
   // Simple auth admin (mot de passe fixe pour l'instant)
-  if (email === "admin@wooripay.com" && password === "WooriAdmin2024!") {
+  if (email === "admin@wooripay.com" && password === "Admin2024") {
     localStorage.setItem("admin_token", "admin_authenticated");
     token = "admin_authenticated";
     document.getElementById("loginPage").style.display = "none";
@@ -313,32 +313,32 @@ async function loadAll() {
 async function loadStats() {
   try {
     const [usersRes, txRes] = await Promise.all([
-      fetch(API + "/admin/stats", { headers: { "x-admin-key": "WooriAdmin2024!" } }),
-      fetch(API + "/admin/stats", { headers: { "x-admin-key": "WooriAdmin2024!" } })
+      fetch(API + "/admin/stats", { headers: { "x-admin-key": "Admin2024" } }),
+      fetch(API + "/admin/stats", { headers: { "x-admin-key": "Admin2024" } })
     ]);
     const data = await usersRes.json();
 
     document.getElementById("statsGrid").innerHTML = `
       <div class="stat-card">
-        <div class="icon" style="background:#E8F5E9">👥</div>
+        <div class="icon" style="background:#E8F5E9">??</div>
         <div class="value">${data.totalUsers || 0}</div>
         <div class="label">Utilisateurs total</div>
         <div class="change green">+${data.newUsersToday || 0} aujourd'hui</div>
       </div>
       <div class="stat-card">
-        <div class="icon" style="background:#E3F2FD">💸</div>
+        <div class="icon" style="background:#E3F2FD">??</div>
         <div class="value">${(data.totalVolume || 0).toLocaleString()}</div>
         <div class="label">Volume total (XOF)</div>
         <div class="change green">${data.totalTransactions || 0} transactions</div>
       </div>
       <div class="stat-card">
-        <div class="icon" style="background:#FFF3E0">💰</div>
+        <div class="icon" style="background:#FFF3E0">??</div>
         <div class="value">${(data.totalFees || 0).toLocaleString()}</div>
         <div class="label">Frais collectes (XOF)</div>
         <div class="change green">Revenue genere</div>
       </div>
       <div class="stat-card">
-        <div class="icon" style="background:#F3E5F5">🌍</div>
+        <div class="icon" style="background:#F3E5F5">??</div>
         <div class="value">${data.activeCountries || 0}</div>
         <div class="label">Pays actifs</div>
         <div class="change green">Couverture internationale</div>
@@ -347,22 +347,22 @@ async function loadStats() {
   } catch(e) {
     document.getElementById("statsGrid").innerHTML = `
       <div class="stat-card">
-        <div class="icon" style="background:#E8F5E9">👥</div>
+        <div class="icon" style="background:#E8F5E9">??</div>
         <div class="value">-</div>
         <div class="label">Utilisateurs</div>
       </div>
       <div class="stat-card">
-        <div class="icon" style="background:#E3F2FD">💸</div>
+        <div class="icon" style="background:#E3F2FD">??</div>
         <div class="value">-</div>
         <div class="label">Volume total</div>
       </div>
       <div class="stat-card">
-        <div class="icon" style="background:#FFF3E0">💰</div>
+        <div class="icon" style="background:#FFF3E0">??</div>
         <div class="value">-</div>
         <div class="label">Frais collectes</div>
       </div>
       <div class="stat-card">
-        <div class="icon" style="background:#F3E5F5">🌍</div>
+        <div class="icon" style="background:#F3E5F5">??</div>
         <div class="value">-</div>
         <div class="label">Pays actifs</div>
       </div>
@@ -372,7 +372,7 @@ async function loadStats() {
 
 async function loadRecentTx() {
   try {
-    const res = await fetch(API + "/admin/transactions?limit=5", { headers: { "x-admin-key": "WooriAdmin2024!" } });
+    const res = await fetch(API + "/admin/transactions?limit=5", { headers: { "x-admin-key": "Admin2024" } });
     const data = await res.json();
     const txs = data.transactions || [];
     document.getElementById("recentTx").innerHTML = txs.length === 0
@@ -393,7 +393,7 @@ async function loadRecentTx() {
 
 async function loadTxTypes() {
   try {
-    const res = await fetch(API + "/admin/stats", { headers: { "x-admin-key": "WooriAdmin2024!" } });
+    const res = await fetch(API + "/admin/stats", { headers: { "x-admin-key": "Admin2024" } });
     const data = await res.json();
     const types = data.byType || {};
     document.getElementById("txTypes").innerHTML = Object.entries(types).map(([type, count]) => `
@@ -409,7 +409,7 @@ async function loadTxTypes() {
 
 async function loadUsers() {
   try {
-    const res = await fetch(API + "/admin/users", { headers: { "x-admin-key": "WooriAdmin2024!" } });
+    const res = await fetch(API + "/admin/users", { headers: { "x-admin-key": "Admin2024" } });
     const data = await res.json();
     allUsers = data.users || [];
     renderUsers(allUsers);
@@ -461,7 +461,7 @@ function viewUser(id) {
 
 async function loadTransactions() {
   try {
-    const res = await fetch(API + "/admin/transactions", { headers: { "x-admin-key": "WooriAdmin2024!" } });
+    const res = await fetch(API + "/admin/transactions", { headers: { "x-admin-key": "Admin2024" } });
     const data = await res.json();
     allTx = data.transactions || [];
     renderTx(allTx);
@@ -496,12 +496,12 @@ function filterTx(type, btn) {
 
 async function loadCountries() {
   try {
-    const res = await fetch(API + "/admin/countries", { headers: { "x-admin-key": "WooriAdmin2024!" } });
+    const res = await fetch(API + "/admin/countries", { headers: { "x-admin-key": "Admin2024" } });
     const data = await res.json();
     const countries = data.countries || [];
     document.getElementById("countriesGrid").innerHTML = countries.map(c => `
       <div class="stat-card">
-        <div style="font-size:36px;margin-bottom:10px">${c.flag || "🌍"}</div>
+        <div style="font-size:36px;margin-bottom:10px">${c.flag || "??"}</div>
         <div class="value">${c.userCount || 0}</div>
         <div class="label">${c.name} - Utilisateurs</div>
         <div class="change green">${(c.volume || 0).toLocaleString()} ${c.currency}</div>
@@ -515,7 +515,7 @@ async function loadCountries() {
 
 async function loadReceipts() {
   try {
-    const res = await fetch(API + "/admin/transactions", { headers: { "x-admin-key": "WooriAdmin2024!" } });
+    const res = await fetch(API + "/admin/transactions", { headers: { "x-admin-key": "Admin2024" } });
     const data = await res.json();
     allReceipts = data.transactions || [];
     renderReceipts(allReceipts);
@@ -536,7 +536,7 @@ function renderReceipts(txs) {
         <td style="font-size:12px">${tx.sender?.phone || "-"}</td>
         <td style="font-size:12px">${tx.receiverPhone || "-"}</td>
         <td style="font-size:12px">${new Date(tx.createdAt).toLocaleDateString("fr-FR")}</td>
-        <td><button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="printReceipt('${tx.id}')">🖨️</button></td>
+        <td><button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="printReceipt('${tx.id}')">???</button></td>
       </tr>
     `).join("");
 }
@@ -558,7 +558,7 @@ function printReceipt(id) {
     <div class="header">
       <h2 style="color:#009460">WOORI PAY</h2>
       <p>Recu de transaction</p>
-      <p style="color:#4CAF50;font-weight:bold">✓ TRANSACTION REUSSIE</p>
+      <p style="color:#4CAF50;font-weight:bold">? TRANSACTION REUSSIE</p>
     </div>
     <div class="row"><span>Reference</span><span>${tx.reference || tx.id}</span></div>
     <div class="row"><span>Type</span><span>${getTypeLabel(tx.type)}</span></div>
@@ -569,7 +569,7 @@ function printReceipt(id) {
     <div class="row"><span>Destinataire</span><span>${tx.receiverPhone || "-"}</span></div>
     <div class="row"><span>Date</span><span>${new Date(tx.createdAt).toLocaleString("fr-FR")}</span></div>
     <div class="row"><span>Statut</span><span style="color:#4CAF50;font-weight:bold">${tx.status}</span></div>
-    <button class="btn" onclick="window.print()">🖨️ Imprimer</button>
+    <button class="btn" onclick="window.print()">??? Imprimer</button>
     </body></html>
   `);
   win.document.close();
