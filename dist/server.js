@@ -373,4 +373,58 @@ process.on("SIGINT", async () => {
     process.exit(0);
 });
 app.get("/admin", (req, res) => { res.sendFile(require("path").join(process.cwd(), "dist", "admin.html")); });
+app.get("/api/v1/admin/stats", async (req, res) => {
+    try {
+        const totalUsers = await prisma.user.count();
+        const totalTx = await prisma.transaction.count();
+        const fees = await prisma.transaction.aggregate({ _sum: { fee: true } });
+        const volume = await prisma.transaction.aggregate({ _sum: { amount: true } });
+        const byType = await prisma.transaction.groupBy({ by: ["type"], _count: { id: true } });
+        const newUsersToday = await prisma.user.count({ where: { createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } });
+        res.json({ success: true, totalUsers, totalTransactions: totalTx, totalVolume: volume._sum.amount || 0, totalFees: fees._sum.fee || 0, activeCountries: 5, newUsersToday, byType: Object.fromEntries(byType.map((b) => [b.type, b._count.id])) });
+    }
+    catch (e) {
+        res.status(500).json({ error: "Erreur" });
+    }
+});
+app.get("/api/v1/admin/users", async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({ include: { wallet: true }, orderBy: { createdAt: "desc" }, take: 100 });
+        res.json({ success: true, users });
+    }
+    catch (e) {
+        res.status(500).json({ error: "Erreur" });
+    }
+});
+app.get("/api/v1/admin/transactions", async (req, res) => {
+    try {
+        const transactions = await prisma.transaction.findMany({ include: { sender: { select: { phone: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" }, take: 200 });
+        res.json({ success: true, transactions });
+    }
+    catch (e) {
+        res.status(500).json({ error: "Erreur" });
+    }
+});
+app.get("/api/v1/admin/countries", async (req, res) => {
+    try {
+        const countries = [
+            { code: "CI", name: "Cote Ivoire", currency: "XOF", dial: "+225" },
+            { code: "SN", name: "Senegal", currency: "XOF", dial: "+221" },
+            { code: "GN", name: "Guinee", currency: "GNF", dial: "+224" },
+            { code: "ML", name: "Mali", currency: "XOF", dial: "+223" },
+            { code: "BF", name: "Burkina Faso", currency: "XOF", dial: "+226" },
+            { code: "GH", name: "Ghana", currency: "GHS", dial: "+233" },
+            { code: "NG", name: "Nigeria", currency: "NGN", dial: "+234" }
+        ];
+        const results = await Promise.all(countries.map(async (c) => {
+            const userCount = await prisma.user.count({ where: { phone: { startsWith: c.dial } } });
+            const txData = await prisma.transaction.aggregate({ where: { sender: { phone: { startsWith: c.dial } } }, _sum: { amount: true, fee: true } });
+            return { ...c, userCount, volume: txData._sum.amount || 0, fees: txData._sum.fee || 0 };
+        }));
+        res.json({ success: true, countries: results });
+    }
+    catch (e) {
+        res.status(500).json({ error: "Erreur" });
+    }
+});
 //# sourceMappingURL=server.js.map
