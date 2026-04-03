@@ -52,7 +52,7 @@ app.post("/api/v1/auth/send-otp", async (req: Request, res: Response) => {
 
     const formattedPhone = formatPhone(phone);
     const otpCode = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 10 min
 
     await prisma.oTP.deleteMany({ where: { phone: formattedPhone } });
     await prisma.oTP.create({ data: { phone: formattedPhone, code: otpCode, expiresAt } });
