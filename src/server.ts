@@ -158,7 +158,7 @@ app.get("/api/v1/transactions", authenticateToken, async (req: Request, res: Res
 
 // --- CHECK PHONE --------------------------------------------------------------
 
-app.get("/api/v1/users/check-phone/:phone", authenticateToken, async (req: Request, res: Response) => {
+app.get("/api/v1/users/check-phone/:phone", async (req: Request, res: Response) => {
   try {
     const phone = formatPhone(decodeURIComponent(req.params.phone));
     const user = await prisma.user.findUnique({

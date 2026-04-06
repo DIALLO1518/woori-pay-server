@@ -146,7 +146,7 @@ app.get("/api/v1/transactions", authenticateToken, async (req, res) => {
     }
 });
 // --- CHECK PHONE --------------------------------------------------------------
-app.get("/api/v1/users/check-phone/:phone", authenticateToken, async (req, res) => {
+app.get("/api/v1/users/check-phone/:phone", async (req, res) => {
     try {
         const phone = formatPhone(decodeURIComponent(req.params.phone));
         const user = await prisma.user.findUnique({
