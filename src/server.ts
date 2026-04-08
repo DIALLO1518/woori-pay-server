@@ -204,8 +204,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req: Request, res
     const result = await prisma.$transaction(async (tx: any) => {
       const updatedWallet = await tx.wallet.update({
         where: { id: wallet.id },
-        data: { balance: { increment: amount } }
-      });
+        data: { balance: { increment: amountToCredit } } });
 
       const transaction = await tx.transaction.create({
         data: {
@@ -215,7 +214,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req: Request, res
           senderId: userId,
           amount,
           fee: 0,
-          netAmount: amount,
+          netAmount: amountToCredit,
           reference,
           description: `Dépôt via ${provider || "Mobile Money"}`,
           completedAt: new Date()
@@ -279,7 +278,7 @@ app.post("/api/v1/payments/withdraw", authenticateToken, async (req: Request, re
           receiverPhone: phoneNumber,
           amount,
           fee: 0,
-          netAmount: amount,
+          netAmount: amountToCredit,
           reference,
           description: `Retrait via ${provider || "Mobile Money"}`,
           completedAt: new Date()
@@ -315,7 +314,7 @@ app.post("/api/v1/payments/withdraw", authenticateToken, async (req: Request, re
 app.post("/api/v1/transfers/send", authenticateToken, async (req: Request, res: Response) => {
   try {
     const { userId } = (req as any).user;
-    const { recipientPhone, recipientName, amount, currency, pin } = req.body;
+    const { recipientPhone, recipientName, amount, currency, pin, convertedAmount, recipientCurrency, recipientCountry, fees } = req.body;
 
     if (!recipientPhone || !amount || !pin) return res.status(400).json({ success: false, error: "Tous les champs requis" });
 
@@ -346,7 +345,8 @@ app.post("/api/v1/transfers/send", authenticateToken, async (req: Request, res: 
 
     const result = await prisma.$transaction(async (tx: any) => {
       await tx.wallet.update({ where: { id: senderWallet.id }, data: { balance: { decrement: totalDebit } } });
-      await tx.wallet.update({ where: { id: recipient.wallet!.id }, data: { balance: { increment: amount } } });
+      const amountToCredit = (convertedAmount && convertedAmount > 0 && recipientCountry) ? convertedAmount : amount;
+        await tx.wallet.update({ where: { id: recipient.wallet!.id }, data: { balance: { increment: amountToCredit } } });
 
       const transaction = await tx.transaction.create({
         data: {
@@ -358,7 +358,7 @@ app.post("/api/v1/transfers/send", authenticateToken, async (req: Request, res: 
           receiverPhone: formattedRecipient,
           amount,
           fee,
-          netAmount: amount,
+          netAmount: amountToCredit,
           reference,
           description: `Envoyé à ${recipientName || formattedRecipient}`,
           completedAt: new Date()
