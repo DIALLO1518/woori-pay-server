@@ -1,4 +1,4 @@
-﻿generator client {
+generator client {
   provider = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
@@ -21,11 +21,9 @@ model User {
   biometricEnabled  Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
   wallet      Wallet?
   sentTx      Transaction[] @relation("Sender")
   receivedTx  Transaction[] @relation("Receiver")
-  
   @@index([phone])
   @@index([status])
 }
@@ -40,7 +38,6 @@ model Wallet {
   dailyLimit  Int      @default(500000)
   monthlyLimit Int     @default(2000000)
   updatedAt   DateTime @updatedAt
-  
   transactions Transaction[]
 }
 
@@ -62,7 +59,6 @@ model Transaction {
   description   String?
   completedAt   DateTime?
   createdAt     DateTime @default(now())
-  
   @@index([walletId, createdAt])
   @@index([status, createdAt])
   @@index([reference])
@@ -76,6 +72,5 @@ model OTP {
   expiresAt DateTime
   verified  Boolean  @default(false)
   createdAt DateTime @default(now())
-  
   @@index([phone, expiresAt])
 }
