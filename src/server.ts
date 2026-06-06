@@ -263,6 +263,7 @@ app.get("/api/v1/users/check-phone/:phone", async (req: Request, res: Response) 
 
 // --- DEPOSIT ------------------------------------------------------------------
 
+// --- DEPOSIT (SECURE ASYNC) ----------------------------------------------------
 app.post("/api/v1/payments/deposit", authenticateToken, async (req: Request, res: Response) => {
   try {
     const { userId } = (req as any).user;
@@ -277,44 +278,68 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req: Request, res
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
     if (!wallet) return res.status(404).json({ success: false, error: "Wallet non trouve" });
 
+    // Simulation de frais de réseau de l'opérateur (ex: 1% de frais d'agrégateur pour le dépôt)
+    const operatorFee = Math.round(amount * 0.01);
+    const netAmount = amount - operatorFee;
     const reference = "DEP_" + Date.now() + "_" + userId.substring(0, 6);
 
-    const result = await prisma.$transaction(async (tx: any) => {
-      const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: amount } }
-      });
-
-      const transaction = await tx.transaction.create({
-        data: {
-          type: "DEPOSIT",
-          status: "COMPLETED",
-          walletId: wallet.id,
-          senderId: userId,
-          amount,
-          fee: 0,
-          netAmount: amount,
-          reference,
-          description: `Depot via ${provider || "Mobile Money"}`,
-          completedAt: new Date()
-        }
-      });
-
-      return { transaction, newBalance: updatedWallet.balance };
+    // ÉTAPE 1 : On crée uniquement l'enregistrement en PENDING. Le solde n'augmente pas.
+    const transaction = await prisma.transaction.create({
+      data: {
+        type: "DEPOSIT",
+        status: "PENDING",
+        walletId: wallet.id,
+        senderId: userId,
+        amount,
+        fee: operatorFee,
+        netAmount,
+        reference,
+        description: `Depot via ${provider || "Mobile Money"} (En attente op.)`
+      }
     });
 
+    // ÉTAPE 2 : Simulation asynchrone du Webhook de l'opérateur (ex: Wave/Orange validant la transaction 5s plus tard)
+    setTimeout(async () => {
+      try {
+        await prisma.$transaction(async (tx: any) => {
+          // On vérifie que la transaction n'a pas été modifiée entre temps
+          const txCheck = await tx.transaction.findUnique({ where: { id: transaction.id } });
+          if (txCheck && txCheck.status === "PENDING") {
+            // C'est validé par l'opérateur ! On applique l'argent réel sur le Wallet
+            await tx.wallet.update({
+              where: { id: wallet.id },
+              data: { balance: { increment: amount } } // On ajoute la valeur brute déposée
+            });
+
+            await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                status: "COMPLETED",
+                description: `Depot reussi via ${provider || "Mobile Money"}`,
+                completedAt: new Date()
+              }
+            });
+          }
+        });
+        console.log(`[Webhook Simulation] Deposit ${reference} COMPLETED successfully.`);
+      } catch (e) {
+        console.error(`[Webhook Simulation Error] Failed to complete deposit ${reference}:`, e);
+      }
+    }, 5000);
+
+    // On renvoie une réponse immédiate à l'application. Elle affiche l'état initié.
     res.json({
       success: true,
-      newBalance: result.newBalance,
+      newBalance: wallet.balance, // Le solde affiché n'a pas bougé localement tant que le webhook n'a pas frappé
       transaction: {
-        id: result.transaction.id,
+        id: transaction.id,
         type: "DEPOSIT",
         amount,
         currency: currency || wallet.currency,
-        date: result.transaction.createdAt,
-        status: "COMPLETED",
-        description: `Depot via ${provider || "Mobile Money"}`,
-        fees: 0
+        date: transaction.createdAt,
+        status: "PENDING",
+        description: transaction.description,
+        fees: operatorFee
       }
     });
   } catch (error) {
@@ -323,8 +348,7 @@ app.post("/api/v1/payments/deposit", authenticateToken, async (req: Request, res
   }
 });
 
-// --- WITHDRAW -----------------------------------------------------------------
-
+// --- WITHDRAW (SECURE ASYNC WITH ROLLBACK) -------------------------------------
 app.post("/api/v1/payments/withdraw", authenticateToken, async (req: Request, res: Response) => {
   try {
     const { userId } = (req as any).user;
@@ -340,33 +364,83 @@ app.post("/api/v1/payments/withdraw", authenticateToken, async (req: Request, re
     if (!wallet) return res.status(404).json({ success: false, error: "Wallet non trouve" });
     if (wallet.balance < amount) return res.status(400).json({ success: false, error: "Solde insuffisant" });
 
+    // Frais opérateur de retrait fixés à 1%
+    const operatorFee = Math.round(amount * 0.01);
+    const totalDebit = amount + operatorFee;
+
+    if (wallet.balance < totalDebit) {
+      return res.status(400).json({ success: false, error: `Solde insuffisant pour couvrir les frais d'operateur (${operatorFee} ${wallet.currency})` });
+    }
+
     const reference = "WIT_" + Date.now() + "_" + userId.substring(0, 6);
 
+    // ÉTAPE 1 : Sécurisation immédiate (On bloque le solde pour éviter qu'il ne le dépense ailleurs pendant le traitement)
     const result = await prisma.$transaction(async (tx: any) => {
       const updatedWallet = await tx.wallet.update({
         where: { id: wallet.id },
-        data: { balance: { decrement: amount } }
+        data: { balance: { decrement: totalDebit } }
       });
 
       const transaction = await tx.transaction.create({
         data: {
           type: "WITHDRAWAL",
-          status: "COMPLETED",
+          status: "PENDING",
           walletId: wallet.id,
           senderId: userId,
           receiverPhone: phoneNumber,
-          amount,
-          fee: 0,
+          amount: totalDebit,
+          fee: operatorFee,
           netAmount: amount,
           reference,
-          description: `Retrait via ${provider || "Mobile Money"}`,
-          completedAt: new Date()
+          description: `Retrait via ${provider || "Mobile Money"} (Traitement en cours)`
         }
       });
 
       return { transaction, newBalance: updatedWallet.balance };
     });
 
+    // ÉTAPE 2 : Simulation asynchrone du traitement de décaissement par l'opérateur (5 secondes)
+    setTimeout(async () => {
+      try {
+        // Simulation d'un taux de succès réseau de 95% (Exemple de panne d'un opérateur Mobile money ou mauvais numéro)
+        const isOperatorSuccess = Math.random() > 0.05; 
+
+        if (isOperatorSuccess) {
+          // L'opérateur confirme le décaissement : on valide la transaction définitivement
+          await prisma.transaction.update({
+            where: { id: result.transaction.id },
+            data: {
+              status: "COMPLETED",
+              description: `Retrait reussi via ${provider || "Mobile Money"}`,
+              completedAt: new Date()
+            }
+          });
+          console.log(`[Webhook Simulation] Withdrawal ${reference} COMPLETED successfully.`);
+        } else {
+          // L'opérateur rejette l'opération (Échec réseau) : ROLLBACK DU PORTefeuille
+          await prisma.$transaction(async (tx: any) => {
+            await tx.wallet.update({
+              where: { id: wallet.id },
+              data: { balance: { increment: totalDebit } } // On restitue les fonds bloqués
+            });
+
+            await tx.transaction.update({
+              where: { id: result.transaction.id },
+              data: {
+                status: "FAILED",
+                description: `Retrait echoue : Rejete par l'operateur (${provider || "Mobile Money"})`,
+                completedAt: new Date()
+              }
+            });
+          });
+          console.log(`[Webhook Simulation] Withdrawal ${reference} FAILED. Funds rolled back to user.`);
+        }
+      } catch (e) {
+        console.error(`[Webhook Simulation Error] Critical error during withdrawal async workflow for ${reference}:`, e);
+      }
+    }, 5000);
+
+    // On retourne le statut PENDING immédiat à l'application mobile
     res.json({
       success: true,
       newBalance: result.newBalance,
@@ -376,10 +450,10 @@ app.post("/api/v1/payments/withdraw", authenticateToken, async (req: Request, re
         amount: -amount,
         currency: currency || wallet.currency,
         date: result.transaction.createdAt,
-        status: "COMPLETED",
-        description: `Retrait via ${provider || "Mobile Money"}`,
+        status: "PENDING",
+        description: result.transaction.description,
         recipientPhone: phoneNumber,
-        fees: 0
+        fees: operatorFee
       }
     });
   } catch (error) {
